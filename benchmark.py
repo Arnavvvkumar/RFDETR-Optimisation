@@ -7,6 +7,9 @@ import os
 import csv
 import time
 
+IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+
 class MinimalRFDETR(nn.Module):
     def __init__(self):
         super().__init__()
@@ -43,7 +46,13 @@ class MinimalRFDETR(nn.Module):
 def load_pytorch_model(checkpoint_path, device):
     model = MinimalRFDETR().to(device)
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint['model_state_dict'])
+
+    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+        state_dict = checkpoint['model_state_dict']
+    else:
+        state_dict = checkpoint
+
+    model.load_state_dict(state_dict)
     model.eval()
     return model
 
@@ -52,15 +61,15 @@ def load_onnx_model(model_path):
 
 def preprocess_image(image_path):
     image = Image.open(image_path).convert('RGB')
-    image = image.resize((800, 800))
-    
-    transform = torch.nn.Sequential(
-        torch.nn.functional.to_tensor,
-        torch.nn.functional.normalize,
-        lambda x: x.unsqueeze(0)
-    )
-    
-    return transform(image), image.size
+    original_size = image.size
+    resized = image.resize((800, 800))
+
+    image_array = np.asarray(resized, dtype=np.float32) / 255.0
+    image_array = (image_array - IMAGENET_MEAN) / IMAGENET_STD
+    image_array = np.transpose(image_array, (2, 0, 1))
+
+    input_tensor = torch.from_numpy(image_array).unsqueeze(0)
+    return input_tensor, original_size
 
 def benchmark_models():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -100,6 +109,7 @@ def benchmark_models():
         print(f"\nProcessing {filename}...")
         
         input_tensor, (orig_w, orig_h) = preprocess_image(image_path)
+        input_tensor = input_tensor.to(device)
         
         for model_name, model, model_type in models:
             print(f"  Testing {model_name}...")
@@ -113,7 +123,7 @@ def benchmark_models():
                     boxes = boxes.cpu().numpy()
             else:
                 input_name = model.get_inputs()[0].name
-                outputs = model.run(None, {input_name: input_tensor.numpy()})
+                outputs = model.run(None, {input_name: input_tensor.cpu().numpy()})
                 logits, boxes = outputs
             
             inference_time = time.time() - start_time
