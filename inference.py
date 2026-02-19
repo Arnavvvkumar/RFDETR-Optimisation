@@ -46,7 +46,13 @@ class MinimalRFDETR(nn.Module):
 def load_pytorch_model(checkpoint_path, device):
     model = MinimalRFDETR().to(device)
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint['model_state_dict'])
+
+    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+        state_dict = checkpoint['model_state_dict']
+    else:
+        state_dict = checkpoint
+
+    model.load_state_dict(state_dict)
     model.eval()
     return model
 
@@ -58,6 +64,7 @@ def prune_model(model, prune_percent):
     for name, module in model_copy.named_modules():
         if isinstance(module, (nn.Linear, nn.Conv2d)):
             prune.l1_unstructured(module, name='weight', amount=prune_percent)
+            prune.remove(module, 'weight')
     
     return model_copy
 
@@ -110,7 +117,7 @@ def main():
         prune_suffix = str(int(prune_percent * 100))
         
         # Save pruned PyTorch model
-        torch.save(pruned_model.state_dict(), f"models/rf_detr_pruned_{prune_suffix}.pth")
+        torch.save({'model_state_dict': pruned_model.state_dict()}, f"models/rf_detr_pruned_{prune_suffix}.pth")
         print(f"Saved pruned PyTorch model: models/rf_detr_pruned_{prune_suffix}.pth")
         
         # Export to ONNX
