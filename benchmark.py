@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 import onnxruntime as ort
 import numpy as np
 from PIL import Image
@@ -7,41 +6,10 @@ import os
 import csv
 import time
 
+from pruning import MinimalRFDETR
+
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-
-class MinimalRFDETR(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.backbone = nn.Sequential(
-            nn.Conv2d(3, 64, 7, stride=2, padding=3),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.MaxPool2d(3, stride=2, padding=1),
-            nn.Conv2d(64, 128, 3, stride=2, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            nn.Conv2d(128, 256, 3, stride=2, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(),
-        )
-        
-        self.transformer = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(d_model=256, nhead=8, dim_feedforward=1024),
-            num_layers=6
-        )
-        
-        self.classifier = nn.Linear(256, 2)
-        self.regressor = nn.Linear(256, 4)
-        
-    def forward(self, x):
-        features = self.backbone(x)
-        b, c, h, w = features.shape
-        features = features.flatten(2).transpose(1, 2)
-        encoded = self.transformer(features)
-        logits = self.classifier(encoded)
-        boxes = self.regressor(encoded)
-        return logits, boxes
 
 def load_pytorch_model(checkpoint_path, device):
     model = MinimalRFDETR().to(device)

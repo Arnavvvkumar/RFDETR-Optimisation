@@ -1,6 +1,5 @@
 import torch
-import onnx
-from onnxruntime.quantization import quantize_dynamic
+from onnxruntime.quantization import QuantType, quantize_dynamic
 import os
 
 from pruning import load_pytorch_model, prune_model
@@ -31,8 +30,7 @@ def quantize_onnx_model(input_path, output_path):
     quantize_dynamic(
         model_input=input_path,
         model_output=output_path,
-        weight_type=onnx.TensorProto.INT8,
-        optimize_model=True
+        weight_type=QuantType.QInt8
     )
 
 def main():
