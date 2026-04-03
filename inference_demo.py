@@ -100,7 +100,7 @@ def draw_detections(image_path, detections, output_path, model_name="Model"):
 
 def main():
     parser = argparse.ArgumentParser(description="RF-DETR Face Detection Demo")
-    parser.add_argument("--model", type=str, default="rf_detr_quantized.onnx", 
+    parser.add_argument("--model", type=str, default="models/rf_detr_quantized.onnx", 
                        help="Path to ONNX model")
     parser.add_argument("--image", type=str, required=True, 
                        help="Path to input image")
