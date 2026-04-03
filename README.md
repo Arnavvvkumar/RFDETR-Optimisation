@@ -17,6 +17,7 @@ face-detection-rfdetr/
 ├── analyze_results.py      # Results analysis and summary
 ├── plot_results.py         # Trade-off visualization
 ├── visualize_detections.py # Detection visualization
+├── pruning.py              # Standalone pruning utilities + CLI
 ├── inference.py            # Model compression pipeline
 └── README.md              # This file
 ```
@@ -50,8 +51,11 @@ face-detection-rfdetr/
 
 ## Scripts Overview
 
+### `pruning.py`
+- Contains reusable pruning logic and a standalone CLI for creating pruned checkpoints
+
 ### `inference.py`
-- Creates pruned models (1%, 30%, 40% sparsity)
+- Uses `pruning.py` utilities to create pruned models (1%, 30%, 40% sparsity)
 - Exports models to ONNX format
 - Applies quantization to reduce model size
 - Saves all models to `models/` directory
